@@ -1,0 +1,14 @@
+## Interface: 120001, 120005, 120000
+## Title: RaidNexus
+## Notes: Guild management tools for raidnexus.com
+## Version: 0.2.31
+## Author: RaidNexus
+## SavedVariables: RaidNexusDB
+## IconTexture: Interface\AddOns\RaidNexus\RaidNexusIcon
+
+embeds.xml
+RaidNexusIcon.tga
+RosterExport.lua
+CombatLog.lua
+SimCExport.lua
+Core.lua
