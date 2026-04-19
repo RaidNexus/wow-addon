@@ -28,7 +28,6 @@ selects the generated text, and prompts the user to press `Ctrl+C`.
 ## Notes
 
 - This add-on is raid-focused for the current RaidNexus Live Raid workflow.
-- The add-on now replaces the need for SimpleCombatLogger on Retail for auto combat logging.
 - If the player is not in a raid, the add-on shows a friendly message instead of exporting.
 - Settings/state are stored in `RaidNexusDB`.
 
