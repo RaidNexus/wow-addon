@@ -200,7 +200,7 @@ function RosterExport:EnsureQuickPanel()
     end
 
     local frame = CreateFrame("Frame", "RaidNexusQuickPanel", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-    frame:SetSize(220, 164)
+    frame:SetSize(220, 220)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 120)
     frame:SetFrameStrata("DIALOG")
     frame:SetClampedToScreen(true)
@@ -220,16 +220,38 @@ function RosterExport:EnsureQuickPanel()
     subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
     subtitle:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -14, -20)
     subtitle:SetJustifyH("LEFT")
-    subtitle:SetText("Quick export tools for your current raid.")
+    subtitle:SetText("Quick export tools for your character and raid.")
 
     local closeButton = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     closeButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4)
 
+    local simSection = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    simSection:SetPoint("TOPLEFT", subtitle, "BOTTOMLEFT", 0, -12)
+    simSection:SetText("Sim")
+
+    local simcButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    simcButton:SetSize(184, 24)
+    simcButton:SetPoint("TOP", frame, "TOP", 0, -90)
+    simcButton:SetText("Copy SimC")
+    simcButton:SetScript("OnClick", function()
+        frame:Hide()
+        if RaidNexus.SimCExport and RaidNexus.SimCExport.PrintSimcProfile then
+            RaidNexus.SimCExport:PrintSimcProfile(false, false, false)
+        else
+            RaidNexus:Print("SimC export module is unavailable.")
+        end
+    end)
+
+    local rosterSection = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    rosterSection:SetPoint("TOPLEFT", simcButton, "BOTTOMLEFT", 0, -14)
+    rosterSection:SetText("Raid Roster")
+
     local rosterButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
     rosterButton:SetSize(184, 24)
-    rosterButton:SetPoint("TOP", frame, "TOP", 0, -52)
+    rosterButton:SetPoint("TOP", frame, "TOP", 0, -150)
     rosterButton:SetText("Copy Roster")
     rosterButton:SetScript("OnClick", function()
+        frame:Hide()
         self:CopyRoster()
     end)
 
@@ -238,19 +260,8 @@ function RosterExport:EnsureQuickPanel()
     groupsButton:SetPoint("TOP", rosterButton, "BOTTOM", 0, -8)
     groupsButton:SetText("Copy Groups")
     groupsButton:SetScript("OnClick", function()
+        frame:Hide()
         self:CopyGroups()
-    end)
-
-    local simcButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    simcButton:SetSize(184, 24)
-    simcButton:SetPoint("TOP", groupsButton, "BOTTOM", 0, -8)
-    simcButton:SetText("Copy SimC")
-    simcButton:SetScript("OnClick", function()
-        if RaidNexus.SimCExport and RaidNexus.SimCExport.PrintSimcProfile then
-            RaidNexus.SimCExport:PrintSimcProfile(false, false, false)
-        else
-            RaidNexus:Print("SimC export module is unavailable.")
-        end
     end)
 
     self.quickPanel = frame
