@@ -2,7 +2,7 @@ local addonName, RaidNexus = ...
 
 RaidNexus = RaidNexus or {}
 RaidNexus.name = addonName
-RaidNexus.version = "0.1.0"
+RaidNexus.version = "0.2.31"
 RaidNexus.minimapIconPath = "Interface\\AddOns\\RaidNexus\\RaidNexusIcon"
 
 local defaultDb = {
@@ -20,7 +20,27 @@ local defaultDb = {
     },
 }
 
-local MINIMAP_BUTTON_RADIUS = 80
+local MINIMAP_BUTTON_RADIUS = 5
+local MINIMAP_BUTTON_SIZE = 31
+local MINIMAP_ICON_SIZE = 23
+local MINIMAP_BACKGROUND_SIZE = 24
+local MINIMAP_RING_SIZE = 50
+local MINIMAP_SHAPES = {
+    ["ROUND"] = { true, true, true, true },
+    ["SQUARE"] = { false, false, false, false },
+    ["CORNER-TOPLEFT"] = { false, false, false, true },
+    ["CORNER-TOPRIGHT"] = { false, false, true, false },
+    ["CORNER-BOTTOMLEFT"] = { false, true, false, false },
+    ["CORNER-BOTTOMRIGHT"] = { true, false, false, false },
+    ["SIDE-LEFT"] = { false, true, false, true },
+    ["SIDE-RIGHT"] = { true, false, true, false },
+    ["SIDE-TOP"] = { false, false, true, true },
+    ["SIDE-BOTTOM"] = { true, true, false, false },
+    ["TRICORNER-TOPLEFT"] = { false, true, true, true },
+    ["TRICORNER-TOPRIGHT"] = { true, false, true, true },
+    ["TRICORNER-BOTTOMLEFT"] = { true, true, false, true },
+    ["TRICORNER-BOTTOMRIGHT"] = { true, true, true, false },
+}
 
 local function atan2(y, x)
     if math.atan2 then
@@ -64,9 +84,31 @@ end
 
 local function getMinimapPosition(angleDegrees)
     local angle = math.rad(angleDegrees or 225)
-    local radius = MINIMAP_BUTTON_RADIUS
-    local x = math.cos(angle) * radius
-    local y = math.sin(angle) * radius
+    local x, y, quadrant = math.cos(angle), math.sin(angle), 1
+
+    if x < 0 then
+        quadrant = quadrant + 1
+    end
+
+    if y > 0 then
+        quadrant = quadrant + 2
+    end
+
+    local minimapShape = GetMinimapShape and GetMinimapShape() or "ROUND"
+    local shapeQuadrants = MINIMAP_SHAPES[minimapShape] or MINIMAP_SHAPES["ROUND"]
+    local widthRadius = (Minimap:GetWidth() / 2) + MINIMAP_BUTTON_RADIUS
+    local heightRadius = (Minimap:GetHeight() / 2) + MINIMAP_BUTTON_RADIUS
+
+    if shapeQuadrants[quadrant] then
+        x = x * widthRadius
+        y = y * heightRadius
+    else
+        local diagonalWidth = math.sqrt(2 * (widthRadius ^ 2)) - 10
+        local diagonalHeight = math.sqrt(2 * (heightRadius ^ 2)) - 10
+        x = math.max(-widthRadius, math.min(x * diagonalWidth, widthRadius))
+        y = math.max(-heightRadius, math.min(y * diagonalHeight, heightRadius))
+    end
+
     return x, y
 end
 
@@ -99,32 +141,48 @@ function RaidNexus:UpdateMinimapButtonPosition()
     self.minimapButton:SetPoint("CENTER", Minimap, "CENTER", x, y)
 end
 
+function RaidNexus:UpdateMinimapButtonVisibility()
+    if not self.minimapButton then
+        return
+    end
+
+    local hidden = RaidNexusDB and RaidNexusDB.minimap and RaidNexusDB.minimap.hide
+    if hidden then
+        self.minimapButton:Hide()
+    else
+        self.minimapButton:Show()
+        self:UpdateMinimapButtonPosition()
+    end
+end
+
 function RaidNexus:CreateMinimapButton()
     if self.minimapButton or not Minimap then
         return
     end
 
     local button = CreateFrame("Button", "RaidNexusMinimapButton", Minimap)
-    button:SetSize(31, 31)
+    button:SetSize(MINIMAP_BUTTON_SIZE, MINIMAP_BUTTON_SIZE)
     button:SetFrameStrata("MEDIUM")
     button:SetFrameLevel(8)
     button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     button:RegisterForDrag("LeftButton")
 
     local background = button:CreateTexture(nil, "BACKGROUND")
-    background:SetAllPoints()
-    background:SetTexture("Interface\\Minimap\\MiniMap-TrackingBackground")
+    background:SetSize(MINIMAP_BACKGROUND_SIZE, MINIMAP_BACKGROUND_SIZE)
+    background:SetPoint("CENTER", button, "CENTER")
+    background:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
     button.background = background
 
     local icon = button:CreateTexture(nil, "ARTWORK")
-    icon:SetSize(24, 24)
-    icon:SetPoint("CENTER")
+    icon:SetSize(MINIMAP_ICON_SIZE, MINIMAP_ICON_SIZE)
+    icon:SetPoint("CENTER", button, "CENTER")
     icon:SetTexture(RaidNexus.minimapIconPath)
     icon:SetTexCoord(0, 1, 0, 1)
     button.icon = icon
 
     local border = button:CreateTexture(nil, "OVERLAY")
-    border:SetAllPoints()
+    border:SetSize(MINIMAP_RING_SIZE, MINIMAP_RING_SIZE)
+    border:SetPoint("TOPLEFT", button, "TOPLEFT")
     border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
     button.border = border
 
@@ -134,17 +192,13 @@ function RaidNexus:CreateMinimapButton()
     highlight:SetTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
     button.highlight = highlight
 
-    button:SetScript("OnClick", function(_, mouseButton)
+    button:SetScript("OnClick", function(_, _)
         if button.wasDragged then
             button.wasDragged = nil
             return
         end
 
-        if mouseButton == "RightButton" then
-            RaidNexus.RosterExport:ToggleQuickPanel()
-        else
-            RaidNexus.RosterExport:CopyRoster()
-        end
+        RaidNexus.RosterExport:ToggleQuickPanel()
     end)
 
     button:SetScript("OnDragStart", function(self)
@@ -170,9 +224,8 @@ function RaidNexus:CreateMinimapButton()
     button:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:SetText("RaidNexus", 1, 0.82, 0.2)
-        GameTooltip:AddLine("Left-click: Copy raid roster", 1, 1, 1)
+        GameTooltip:AddLine("Click: Open quick actions", 1, 1, 1)
         GameTooltip:AddLine("Drag: Move minimap button", 0.8, 0.8, 0.8)
-        GameTooltip:AddLine("Right-click: Open quick actions", 0.8, 0.8, 0.8)
         GameTooltip:Show()
     end)
 
@@ -181,7 +234,7 @@ function RaidNexus:CreateMinimapButton()
     end)
 
     self.minimapButton = button
-    self:UpdateMinimapButtonPosition()
+    self:UpdateMinimapButtonVisibility()
 end
 
 function RaidNexus:HandleSlashCommand(message)
@@ -207,8 +260,18 @@ function RaidNexus:HandleSlashCommand(message)
     if command == "help" then
         self:Print("/rnx roster - Copy all raid members, one per line.")
         self:Print("/rnx groups - Copy raid members grouped by raid group.")
+        self:Print("/rnx simc - Open a SimulationCraft export for your character.")
         self:Print("/rnx combatlog - Show automatic combat logging status.")
         self:Print("/rnx - Open the quick action panel.")
+        return
+    end
+
+    if command == "simc" then
+        if self.SimCExport and self.SimCExport.HandleChatCommand then
+            self.SimCExport:HandleChatCommand(rest)
+        else
+            self:Print("SimC export module is unavailable.")
+        end
         return
     end
 
@@ -244,6 +307,18 @@ frame:SetScript("OnEvent", function(_, event, arg1)
         SLASH_RAIDNEXUS1 = "/rnx"
         SlashCmdList.RAIDNEXUS = function(msg)
             RaidNexus:HandleSlashCommand(msg)
+        end
+
+        if not (IsAddOnLoaded and IsAddOnLoaded("Simulationcraft"))
+            and not (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Simulationcraft")) then
+            SLASH_RAIDNEXUSSIMC1 = "/simc"
+            SlashCmdList.RAIDNEXUSSIMC = function(msg)
+                if RaidNexus.SimCExport and RaidNexus.SimCExport.HandleChatCommand then
+                    RaidNexus.SimCExport:HandleChatCommand(msg)
+                else
+                    RaidNexus:Print("SimC export module is unavailable.")
+                end
+            end
         end
 
         RaidNexus:Print("Loaded. Use /rnx roster or /rnx groups.")

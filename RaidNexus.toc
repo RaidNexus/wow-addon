@@ -10,5 +10,6 @@ embeds.xml
 RaidNexusIcon.tga
 RosterExport.lua
 CombatLog.lua
+SimCData.lua
 SimCExport.lua
 Core.lua
