@@ -257,9 +257,19 @@ function RaidNexus:HandleSlashCommand(message)
         return
     end
 
+    if command == "frontline" or command == "sort" then
+        if self.RosterExport and self.RosterExport.ShowFrontlineSorter then
+            self.RosterExport:ShowFrontlineSorter()
+        else
+            self:Print("Frontline group sorting is unavailable.")
+        end
+        return
+    end
+
     if command == "help" then
         self:Print("/rnx roster - Copy all raid members, one per line.")
         self:Print("/rnx groups - Copy raid members grouped by raid group.")
+        self:Print("/rnx frontline - Paste a boss roster and sort groups 1-4.")
         self:Print("/rnx simc - Open a SimulationCraft export for your character.")
         self:Print("/rnx combatlog - Show automatic combat logging status.")
         self:Print("/rnx - Open the quick action panel.")
@@ -321,6 +331,6 @@ frame:SetScript("OnEvent", function(_, event, arg1)
             end
         end
 
-        RaidNexus:Print("Loaded. Use /rnx roster or /rnx groups.")
+        RaidNexus:Print("Loaded. Use /rnx roster, /rnx groups, or /rnx frontline.")
     end
 end)
